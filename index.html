@@ -30,23 +30,38 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .st{font-weight:600}.st.ok{color:var(--ok)}.st.bad{color:var(--bad)}
 .final input{width:100%;padding:11px;border:1px solid var(--br);border-radius:10px;background:var(--code);color:var(--tx);font:inherit;margin:8px 0}
 #msg{margin-top:10px;font-weight:600}
+.hide{display:none!important}
+#start{max-width:440px;margin:12vh auto;padding:0 16px}
+#start .card{text-align:center}
+#start input{width:100%;padding:11px;border:1px solid var(--br);border-radius:10px;background:var(--code);color:var(--tx);font:inherit;margin:10px 0}
+#warn{display:none;margin-top:8px;padding:8px 12px;border-radius:8px;background:var(--bad);color:#fff;font-size:14px;font-weight:600}
 #lock{position:fixed;inset:0;background:var(--bg);z-index:99;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;font-size:20px;font-weight:600}
 </style>
 </head>
 <body>
 <div id="lock">Обнаружены средства разработчика.<br>Закройте их, чтобы продолжить.</div>
-<div class="wrap">
+<div id="start">
+  <div class="card">
+    <h1>Задачи по JavaScript</h1>
+    <p>Введите ФИО и нажмите «Начать». <b>Попытка только одна:</b> после начала повторно войти и пересдать нельзя. Не закрывайте и не покидайте страницу до конца работы.</p>
+    <input id="sfio" placeholder="Фамилия Имя Отчество" autocomplete="off">
+    <button id="sbtn">Начать</button>
+    <div id="smsg" class="st"></div>
+  </div>
+</div>
+<div class="wrap hide" id="app">
 <header>
   <h1>Задачи по JavaScript</h1>
   <div class="bar"><i id="pb"></i></div>
   <div class="meta" id="meta"></div>
+  <div id="warn"></div>
 </header>
 <p class="hint" style="margin-top:14px">Пишите код в поле ответа. Если в условии указана переменная <code>result</code> или имя функции — используйте именно их. После нажатия «Проверить» задача блокируется, изменить ответ нельзя. Для вывода используйте <code>console.log</code> или <code>alert</code>.</p>
 <div id="list"></div>
 <div class="card final">
   <h3>Отправка результатов</h3>
   <p id="fl">Отправка станет доступна после проверки всех задач.</p>
-  <input id="fio" placeholder="Фамилия Имя Отчество" autocomplete="off">
+  <p id="who" class="hint"></p>
   <button id="send" disabled>Отправить</button>
   <div id="msg"></div>
 </div>
@@ -54,7 +69,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 <script>
 // ====== НАСТРОЙКА: вставьте сюда URL веб-приложения Google Apps Script ======
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzxjX-Sxve1qZ47Ztr7i8Cw07P2P0Sl5ntcXf2e51sKAi-sp3FLkEKSpYm6oc2VMxNc6g/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby5Y9fbgGmFpiT8vqGZpb7Eqz5EJpEZPFwGVEppSBsCyrRyObPMsIg0fktODTSxzZbkyQ/exec";
+const MAX_LEAVES = 3; // сколько раз можно сворачивать/покидать вкладку, затем работа завершается автоматически
 // ===========================================================================
 
 const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -120,7 +136,7 @@ const T=[
 // ---------- состояние ----------
 const KEY='js_tasks_v1';
 let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
-if(!S||!S.items)S={items:{},fio:'',sent:false};
+if(!S||!S.items)S={items:{},fio:'',sent:false,started:false,leaves:0,dev:Math.random().toString(36).slice(2)+Date.now().toString(36)};
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 
 const $=id=>document.getElementById(id);
@@ -160,26 +176,58 @@ function update(){
   $('pb').style.width=(done/T.length*100)+'%';
   $('meta').textContent=`Проверено: ${done} из ${T.length}`;
   const all=done===T.length;
-  const fioOk=$('fio').value.trim().split(/\s+/).filter(Boolean).length>=2;
-  $('send').disabled=!(all&&fioOk)||S.sent;
-  $('fl').textContent=all?'Все задачи проверены. Введите ФИО и отправьте результаты.':'Отправка станет доступна после проверки всех задач.';
-  if(S.sent){$('fio').disabled=true;$('msg').textContent='✔ Результаты отправлены. Спасибо!';$('msg').style.color='var(--ok)'}
+  $('send').disabled=!all||S.sent;
+  $('fl').textContent=all?'Все задачи проверены. Отправьте результаты.':'Отправка станет доступна после проверки всех задач.';
+  if(S.sent){$('msg').textContent='✔ Результаты отправлены. Работа завершена.';$('msg').style.color='var(--ok)'}
   return {done,right};
 }
-$('fio').value=S.fio||'';
-$('fio').addEventListener('input',()=>{S.fio=$('fio').value;save();update()});
+const cfgOk=()=>APPS_SCRIPT_URL&&!APPS_SCRIPT_URL.startsWith('ВСТАВЬТЕ');
+function enter(){$('start').classList.add('hide');$('app').classList.remove('hide');$('who').textContent='Студент: '+S.fio;update()}
 
-$('send').onclick=async()=>{
-  const {right}=update();
-  if(!APPS_SCRIPT_URL||APPS_SCRIPT_URL.startsWith('ВСТАВЬТЕ')){$('msg').textContent='Не настроен адрес отправки (APPS_SCRIPT_URL).';$('msg').style.color='var(--bad)';return}
-  const payload={fio:$('fio').value.trim(),score:right,total:T.length,
-    tasks:T.map((_,i)=>({n:i+1,ok:!!(S.items[i]&&S.items[i].ok),answer:(S.items[i]&&S.items[i].a)||''}))};
+$('sbtn').onclick=async()=>{
+  const m=$('smsg'),fio=$('sfio').value.trim().replace(/\s+/g,' ');
+  m.className='st bad';
+  if(fio.split(' ').length<2){m.textContent='Введите фамилию, имя и отчество полностью.';return}
+  if(!cfgOk()){m.textContent='Не настроен адрес сервера (APPS_SCRIPT_URL).';return}
+  $('sbtn').disabled=true;m.className='st';m.textContent='Проверка…';
+  try{
+    const r=await fetch(APPS_SCRIPT_URL+'?action=start&fio='+encodeURIComponent(fio)+'&dev='+encodeURIComponent(S.dev));
+    const j=await r.json();
+    if(j.status==='ok'||j.status==='resume'){S.fio=fio;S.started=true;save();enter();return}
+    m.className='st bad';
+    m.textContent=j.status==='finished'?'Эта работа уже сдана. Повторная попытка невозможна.':'Этот студент уже начинал работу. Повторный вход невозможен.';
+  }catch(e){m.className='st bad';m.textContent='Нет связи с сервером. Попробуйте ещё раз.'}
+  $('sbtn').disabled=false;
+};
+
+let sending=false;
+async function finish(auto){
+  if(sending||S.sent||!cfgOk())return;
+  sending=true;
+  T.forEach((_,i)=>{if(!(S.items[i]&&S.items[i].done)){S.items[i]={a:(S.items[i]&&S.items[i].a)||'',done:true,ok:false};paint(i)}});
+  const right=T.filter((_,i)=>S.items[i].ok).length;
+  const payload={fio:S.fio,dev:S.dev,leaves:S.leaves,auto:!!auto,score:right,total:T.length,
+    tasks:T.map((_,i)=>({n:i+1,ok:!!S.items[i].ok,answer:S.items[i].a||''}))};
   $('send').disabled=true;$('msg').style.color='';$('msg').textContent='Отправка…';
   try{
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
-    S.sent=true;save();update();
-  }catch(e){$('msg').textContent='Ошибка отправки. Проверьте интернет и попробуйте ещё раз.';$('msg').style.color='var(--bad)';$('send').disabled=false}
-};
+    S.sent=true;save();
+  }catch(e){$('msg').textContent='Ошибка отправки. Проверьте интернет и нажмите «Отправить» ещё раз.';$('msg').style.color='var(--bad)'}
+  sending=false;update();
+}
+$('send').onclick=()=>finish(false);
+
+// выход из вкладки и закрытие страницы
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden||!S.started||S.sent)return;
+  S.leaves=(S.leaves||0)+1;save();
+  const w=$('warn');w.style.display='block';
+  if(S.leaves>=MAX_LEAVES){w.textContent='Вы слишком часто покидали страницу. Работа завершается автоматически.';finish(true)}
+  else w.textContent=`Вы покинули страницу (${S.leaves} из ${MAX_LEAVES}). При превышении работа будет завершена автоматически.`;
+});
+window.addEventListener('beforeunload',e=>{if(S.started&&!S.sent){e.preventDefault();e.returnValue=''}});
+
+if(S.started&&S.fio)enter();
 update();
 
 // ---------- защита от средств разработчика (базовая) ----------
