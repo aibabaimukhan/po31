@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Задачи по JavaScript</title>
+<style>
+:root{--bg:#f4f5f9;--card:#fff;--tx:#1b1e2b;--mut:#6b7185;--br:#e1e4ee;--ac:#4f46e5;--ok:#16a34a;--bad:#dc2626;--code:#f1f3fa}
+@media (prefers-color-scheme:dark){:root{--bg:#12141c;--card:#1b1e2a;--tx:#e8eaf3;--mut:#9aa0b5;--br:#2c3042;--ac:#818cf8;--ok:#4ade80;--bad:#f87171;--code:#232738}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+textarea,input{-webkit-user-select:text;user-select:text}
+.wrap{max-width:820px;margin:0 auto;padding:20px 16px 80px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 0 10px;border-bottom:1px solid var(--br)}
+h1{margin:0 0 8px;font-size:22px}
+.bar{height:8px;background:var(--br);border-radius:8px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .3s}
+.meta{font-size:13px;color:var(--mut);margin-top:6px}
+.card{background:var(--card);border:1px solid var(--br);border-radius:14px;padding:16px;margin:16px 0}
+.card.ok{border-color:var(--ok)}.card.bad{border-color:var(--bad)}
+.card h3{margin:0 0 8px;font-size:15px;color:var(--ac)}
+.card p{margin:0 0 10px}
+code{background:var(--code);padding:1px 6px;border-radius:5px;font-family:ui-monospace,Consolas,monospace;font-size:.92em}
+.hint{font-size:13px;color:var(--mut);margin-bottom:10px}
+textarea{width:100%;min-height:130px;resize:vertical;padding:10px;border:1px solid var(--br);border-radius:10px;background:var(--code);color:var(--tx);font:14px/1.45 ui-monospace,Consolas,monospace;tab-size:2}
+textarea:disabled{opacity:.7}
+.row{display:flex;align-items:center;gap:12px;margin-top:10px}
+button{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:9px 18px;font:600 15px inherit;font-family:inherit;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+.st{font-weight:600}.st.ok{color:var(--ok)}.st.bad{color:var(--bad)}
+.final input{width:100%;padding:11px;border:1px solid var(--br);border-radius:10px;background:var(--code);color:var(--tx);font:inherit;margin:8px 0}
+#msg{margin-top:10px;font-weight:600}
+#lock{position:fixed;inset:0;background:var(--bg);z-index:99;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;font-size:20px;font-weight:600}
+</style>
+</head>
+<body>
+<div id="lock">Обнаружены средства разработчика.<br>Закройте их, чтобы продолжить.</div>
+<div class="wrap">
+<header>
+  <h1>Задачи по JavaScript</h1>
+  <div class="bar"><i id="pb"></i></div>
+  <div class="meta" id="meta"></div>
+</header>
+<p class="hint" style="margin-top:14px">Пишите код в поле ответа. Если в условии указана переменная <code>result</code> или имя функции — используйте именно их. После нажатия «Проверить» задача блокируется, изменить ответ нельзя. Для вывода используйте <code>console.log</code> или <code>alert</code>.</p>
+<div id="list"></div>
+<div class="card final">
+  <h3>Отправка результатов</h3>
+  <p id="fl">Отправка станет доступна после проверки всех задач.</p>
+  <input id="fio" placeholder="Фамилия Имя Отчество" autocomplete="off">
+  <button id="send" disabled>Отправить</button>
+  <div id="msg"></div>
+</div>
+</div>
+
+<script>
+// ====== НАСТРОЙКА: вставьте сюда URL веб-приложения Google Apps Script ======
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzxjX-Sxve1qZ47Ztr7i8Cw07P2P0Sl5ntcXf2e51sKAi-sp3FLkEKSpYm6oc2VMxNc6g/exec";
+// ===========================================================================
+
+const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function run(code,pre='',out=[],o={}){
+  const logs=[],q=(o.prompts||[]).slice();
+  const con={log:(...a)=>logs.push(a.join(' '))};
+  const al=m=>logs.push(String(m)), pr=()=>q.length?q.shift():null;
+  const ret='return {'+out.map(n=>`${n}:typeof ${n}==="undefined"?undefined:${n}`).join(',')+'}';
+  const env=new Function('console','alert','prompt',pre+'\n'+code+'\n'+ret)(con,al,pr);
+  return {env,logs};
+}
+const DAYS=['понедельник','вторник','среда','четверг','пятница','суббота','воскресенье'];
+const SEAS=['зима','весна','лето','осень'];
+const USERS=`const users=[{username:"alex99",role:"admin",isActive:true},{username:"maria_db",role:"user",isActive:false},{username:"john_doe",role:"user",isActive:true},{username:"kate_smith",role:"moderator",isActive:true}];`;
+
+const T=[
+{t:'Дан массив <code>[2, 3, 4, 5]</code>. С помощью цикла <code>for</code> найдите произведение элементов. Результат — в переменную <code>result</code>.',
+ out:['result'],test:(c)=>run(c,'',['result']).env.result===120&&/for\s*\(/.test(c)},
+{t:'Дана строка <code>\'aaa@bbb@ccc\'</code>. Замените все <code>@</code> на <code>\'!\'</code> с помощью глобального поиска и замены. Результат — в <code>result</code>.',
+ test:c=>run(c,'',['result']).env.result==='aaa!bbb!ccc'&&/replace/.test(c)},
+{t:'Дана строка <code>\'aaa bbb ccc\'</code>. Вырежьте из неё слово <code>\'bbb\'</code>. Результат — в <code>result</code>.',
+ test:c=>{const r=run(c,'',['result']).env.result;return (r==='aaa  ccc'||r==='aaa ccc')}},
+{t:'Дана строка <code>\'js\'</code>. Сделайте из неё строку <code>\'JS\'</code>. Результат — в <code>result</code>.',
+ test:c=>run(c,'',['result']).env.result==='JS'},
+{t:'Дана строка <code>\'я учу javascript!\'</code>. Найдите количество символов. Результат — в <code>result</code>.',
+ test:c=>run(c,'',['result']).env.result===17},
+{t:'Дан массив <code>[\'я\', \'учу\', \'javascript\', \'!\']</code>. С помощью метода <code>join</code> преобразуйте его в строку <code>\'я+учу+javascript+!\'</code>. Результат — в <code>result</code>.',
+ test:c=>run(c,'',['result']).env.result==='я+учу+javascript+!'&&/join/.test(c)},
+{t:'Сделайте функцию <code>cube(n)</code>, которая возвращает куб числа.',
+ test:c=>{const f=run(c,'',['cube']).env.cube;return f(3)===27&&f(-2)===-8&&f(0)===0}},
+{t:'Сделайте функцию <code>sum(a, b)</code>, которая возвращает сумму двух чисел.',
+ test:c=>{const f=run(c,'',['sum']).env.sum;return f(2,3)===5&&f(-4,10)===6}},
+{t:'Сделайте функцию <code>dayName(n)</code>, которая принимает число от 1 до 7 и возвращает день недели на русском (1 — понедельник).',
+ test:c=>{const f=run(c,'',['dayName']).env.dayName;return DAYS.every((d,i)=>String(f(i+1)).toLowerCase().trim()===d)}},
+{t:'Переменная <code>num</code> принимает значения 1, 2, 3 или 4 (она уже объявлена, не объявляйте её заново). Если 1 — в <code>result</code> запишите «зима», если 2 — «весна» и так далее. Используйте <code>switch-case</code>.',
+ test:c=>/switch/.test(c)&&SEAS.every((s,i)=>String(run(c,`var num=${i+1};`,['result']).env.result).toLowerCase()===s)},
+{t:'Дан массив <code>arr</code> с числами (уже объявлен). Создайте новый массив <code>result</code> только из положительных чисел. Создайте вспомогательную функцию <code>isPositive(n)</code>: true для положительного числа, false — для отрицательного.',
+ test:c=>{const e=run(c,'const arr=[3,-1,5,-8,0,2];',['result','isPositive']).env;return e.isPositive(5)===true&&e.isPositive(-2)===false&&eq(e.result,[3,5,2])}},
+{t:'Сделайте функцию <code>isNegative(n)</code>, которая проверяет, отрицательное ли число. Если да — возвращает true, иначе false.',
+ test:c=>{const f=run(c,'',['isNegative']).env.isNegative;return f(-5)===true&&f(5)===false&&f(0)===false}},
+{t:'Дан объект <code>obj = {js:[\'jQuery\',\'Angular\'], php:\'hello\', css:\'world\'}</code> (уже объявлен). Запишите в <code>result</code> слово <code>\'jQuery\'</code>, обратившись к объекту.',
+ test:c=>run(c,"const obj={js:['jQuery','Angular'],php:'hello',css:'world'};",['result']).env.result==='jQuery'&&/obj/.test(c)},
+{t:'Создайте объект <code>obj</code> с зарплатами (ключи — имена, например <code>Вася</code>, <code>Петя</code>, <code>Коля</code>). Выведите на экран (<code>console.log</code>) зарплату Пети и Коли.',
+ test:c=>{const r=run(c,'',['obj']),o=r.env.obj;if(!o||typeof o!=='object')return false;const p=o['Петя'],k=o['Коля'];const s=r.logs.join(' ');return p!==undefined&&k!==undefined&&s.includes(String(p))&&s.includes(String(k))}},
+{t:'Дан массив <code>arr</code> с целыми числами (уже объявлен). Создайте массив <code>result</code> только из чётных чисел. Используйте вспомогательную функцию <code>isEven(n)</code> (возвращает true для чётного числа).',
+ test:c=>{const e=run(c,'const arr=[1,2,3,4,5,6,7,8,10];',['result','isEven']).env;return typeof e.isEven==='function'&&e.isEven(4)===true&&e.isEven(3)===false&&eq(e.result,[2,4,6,8,10])}},
+{t:'Создайте калькулятор на 3 <code>prompt</code>: первое число, затем операция (<code>+ - * /</code>), затем второе число. Выведите результат через <code>alert</code> или <code>console.log</code>.',
+ test:c=>[[['5','+','3'],8],[['6','*','7'],42],[['10','-','4'],6],[['8','/','2'],4]].every(([p,v])=>{const l=run(c,'',[],{prompts:p}).logs.join(' ');return new RegExp('(^|[^\\d.])'+v+'($|[^\\d.])').test(l)})&&(c.match(/prompt/g)||[]).length>=3},
+{t:'Сделайте функцию <code>generateRandomNumbers(N, min, max)</code>, которая возвращает массив из N случайных целых чисел из промежутка [min, max].',
+ test:c=>{const f=run(c,'',['generateRandomNumbers']).env.generateRandomNumbers;const ok=(a,n,l,h)=>Array.isArray(a)&&a.length===n&&a.every(x=>Number.isInteger(x)&&x>=l&&x<=h);return ok(f(10,5,8),10,5,8)&&ok(f(50,-3,3),50,-3,3)}},
+{t:'Дан массив <code>users</code> объектов вида <code>{username, role, isActive}</code>. Напишите функцию <code>getActiveUsers(usersArray)</code>: создайте пустой массив <code>activeNames</code>, циклом найдите пользователей с <code>isActive === true</code> и ролью, не равной <code>"admin"</code>, добавьте их <code>username</code> в массив и верните его.',
+ test:c=>{const f=run(c,USERS,['getActiveUsers']).env.getActiveUsers;const u=[{username:'a',role:'admin',isActive:true},{username:'b',role:'user',isActive:true},{username:'c',role:'user',isActive:false},{username:'d',role:'moderator',isActive:true}];return eq(f(u),['b','d'])&&eq(f(u.slice(0,1)),[])&&/for|while/.test(c)}},
+{t:'Сделайте функцию <code>commonElements(a, b)</code>, которая принимает два массива и возвращает массив их общих элементов.',
+ test:c=>{const f=run(c,'',['commonElements']).env.commonElements;return eq(f([1,2,3,4],[3,4,5]).slice().sort(),[3,4])&&eq(f([1,2],[3,4]),[])&&eq(f(['a','b'],['b']),['b'])}},
+{t:'Есть список <code>&lt;ul id="list"&gt;</code> (с числами в <code>&lt;li&gt;</code>) и кнопка <code>&lt;button id="btn"&gt;</code>. По нажатию на кнопку отсортируйте пункты списка по возрастанию. Напишите только JS-код.',
+ test:c=>{const d=document.createElement('div');d.style.display='none';d.innerHTML='<ul id="list"><li>10</li><li>2</li><li>33</li><li>1</li><li>5</li></ul><button id="btn">s</button>';document.body.appendChild(d);try{run(c);d.querySelector('#btn').click();return eq([...d.querySelectorAll('#list li')].map(x=>x.textContent.trim()),['1','2','5','10','33'])}finally{d.remove()}}},
+{t:'Выведите на экран (<code>console.log</code>) пирамидку: строки <code>xx</code>, <code>xxxx</code>, <code>xxxxxx</code>, <code>xxxxxxxx</code>, <code>xxxxxxxxxx</code>.',
+ test:c=>{const l=run(c).logs.join('\n').split('\n').map(s=>s.trim()).filter(Boolean);return eq(l,['xx','xxxx','xxxxxx','xxxxxxxx','xxxxxxxxxx'])}},
+{t:'Дана строка <code>str</code> с четырьмя тегами <code>&lt;h2&gt;text&lt;/h2&gt;</code> (уже объявлена). Каждый <code>h2</code> замените на «!!!», предварительно обернув содержимое в абзац <code>&lt;p&gt;</code>. Используйте <code>.replaceAll()</code>. Результат — в <code>result</code> (например: <code>!!!&lt;p&gt;text&lt;/p&gt;!!!</code> для каждого).',
+ test:c=>{const r=run(c,"const str='<h2>text</h2><h2>text</h2><h2>text</h2><h2>text</h2>';",['result']).env.result;return typeof r==='string'&&!/h2/i.test(r)&&(r.match(/<p>text<\/p>/g)||[]).length===4&&r.includes('!!!')&&/replaceAll/.test(c)}}
+];
+
+// ---------- состояние ----------
+const KEY='js_tasks_v1';
+let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.items)S={items:{},fio:'',sent:false};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+
+const $=id=>document.getElementById(id);
+const list=$('list');
+const PH='// Ваш код здесь';
+
+T.forEach((t,i)=>{
+  const d=document.createElement('div');d.className='card';d.id='c'+i;
+  d.innerHTML=`<h3>Задача ${i+1}</h3><p>${t.t}</p><textarea spellcheck="false" placeholder="${PH}"></textarea>
+  <div class="row"><button>Проверить</button><span class="st"></span></div>`;
+  list.appendChild(d);
+  const ta=d.querySelector('textarea'),btn=d.querySelector('button');
+  ta.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const s=ta.selectionStart;ta.setRangeText('  ',s,ta.selectionEnd,'end')}});
+  ta.addEventListener('input',()=>{if(!S.items[i]){S.items[i]={a:ta.value};}else if(!S.items[i].done)S.items[i].a=ta.value;save()});
+  btn.onclick=()=>{
+    const code=ta.value;let ok=false;
+    if(code.trim()){try{ok=!!t.test(code)}catch(e){ok=false}}
+    S.items[i]={a:code,done:true,ok};save();paint(i);update();
+  };
+  const it=S.items[i];if(it){ta.value=it.a||''}
+  paint(i);
+});
+
+function paint(i){
+  const d=$('c'+i),it=S.items[i],ta=d.querySelector('textarea'),btn=d.querySelector('button'),st=d.querySelector('.st');
+  d.classList.remove('ok','bad');st.className='st';st.textContent='';
+  if(it&&it.done){
+    ta.disabled=true;btn.disabled=true;
+    d.classList.add(it.ok?'ok':'bad');st.classList.add(it.ok?'ok':'bad');
+    st.textContent=it.ok?'✔ Правильно':'✘ Неправильно';
+  }
+}
+
+function update(){
+  const done=T.filter((_,i)=>S.items[i]&&S.items[i].done).length;
+  const right=T.filter((_,i)=>S.items[i]&&S.items[i].ok).length;
+  $('pb').style.width=(done/T.length*100)+'%';
+  $('meta').textContent=`Проверено: ${done} из ${T.length}`;
+  const all=done===T.length;
+  const fioOk=$('fio').value.trim().split(/\s+/).filter(Boolean).length>=2;
+  $('send').disabled=!(all&&fioOk)||S.sent;
+  $('fl').textContent=all?'Все задачи проверены. Введите ФИО и отправьте результаты.':'Отправка станет доступна после проверки всех задач.';
+  if(S.sent){$('fio').disabled=true;$('msg').textContent='✔ Результаты отправлены. Спасибо!';$('msg').style.color='var(--ok)'}
+  return {done,right};
+}
+$('fio').value=S.fio||'';
+$('fio').addEventListener('input',()=>{S.fio=$('fio').value;save();update()});
+
+$('send').onclick=async()=>{
+  const {right}=update();
+  if(!APPS_SCRIPT_URL||APPS_SCRIPT_URL.startsWith('ВСТАВЬТЕ')){$('msg').textContent='Не настроен адрес отправки (APPS_SCRIPT_URL).';$('msg').style.color='var(--bad)';return}
+  const payload={fio:$('fio').value.trim(),score:right,total:T.length,
+    tasks:T.map((_,i)=>({n:i+1,ok:!!(S.items[i]&&S.items[i].ok),answer:(S.items[i]&&S.items[i].a)||''}))};
+  $('send').disabled=true;$('msg').style.color='';$('msg').textContent='Отправка…';
+  try{
+    await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+    S.sent=true;save();update();
+  }catch(e){$('msg').textContent='Ошибка отправки. Проверьте интернет и попробуйте ещё раз.';$('msg').style.color='var(--bad)';$('send').disabled=false}
+};
+update();
+
+// ---------- защита от средств разработчика (базовая) ----------
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['i','j','c','k'].includes(k))||(e.metaKey&&e.altKey&&['i','j','c','u'].includes(k))||(e.ctrlKey&&['u','s'].includes(k))){e.preventDefault();e.stopPropagation();return false}
+},true);
+['copy','cut','dragstart'].forEach(ev=>document.addEventListener(ev,e=>{if(!(e.target&&e.target.tagName==='TEXTAREA'))e.preventDefault()}));
+let dt1=false,dt2=false;
+const lock=$('lock');
+const refresh=()=>{lock.style.display=(dt1||dt2)?'flex':'none'};
+setInterval(()=>{dt1=(window.outerWidth-window.innerWidth>170)||(window.outerHeight-window.innerHeight>170);refresh()},700);
+setInterval(()=>{const t=performance.now();(function(){debugger})();dt2=performance.now()-t>100;refresh()},1000);
+</script>
+</body>
+</html>
